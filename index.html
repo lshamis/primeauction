@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Auction</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <script src="https://unpkg.com/vue@3.2.6/dist/vue.global.prod.js"></script>
+    <style>
+        .collapse-contol {
+            position: fixed;
+            bottom: 5rem;
+            right: 2rem;
+            z-index: 999;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 999;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="container">
+        <section class="section">
+            <div class="container">
+                <div class="columns">
+                    <div class="column is-4" v-show="!collapsed">
+                        <button class="button" :class="{ 'is-primary': !is_fetching, 'is-loading': is_fetching }"
+                            @click="fetchItems">Fetch</button>
+                        <p>Last fetched: {{ lastFetched }}</p>
+                        <input class="input" type="text" v-model="cors_api_key" @input="updateCorsApiKey">
+                        <div>
+                            <a href="https://proxy.cors.sh">proxy.cors.sh</a>
+                        </div>
+                        <div>
+                            <a href="https://10minutemail.com">10minutemail.com</a>
+                        </div>
+                        <hr>
+                        <h3 class="subtitle">Filters
+                            <button class="button is-warning is-small" @click="setDefault">Reset</button>
+                        </h3>
+                        <div class="field" v-for="(filter, index) in filters" :key="index">
+                            <div class="field has-addons">
+                                <div class="control">
+                                    <div>
+                                        <label class="checkbox">
+                                            <input type="checkbox" v-model="filter.use">
+                                            Use
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <button class="button is-danger" @click="removeFilter(index)">Remove</button>
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    <textarea class="textarea" v-model="filter.expr"
+                                        @input="updateFilter(index, $event)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="button is-success is-small" @click="addFilter">
+                            Add
+                        </button>
+                        <hr>
+                        <h3 class="subtitle">Sort By</h3>
+                        <input class="input" v-model="sort_by">
+                        <hr>
+                        <h3 class="subtitle">Limit</h3>
+                        <input class="input" v-model="limit">
+                    </div>
+
+                    <div class="column" :class="{ 'is-8': !collapsed }">
+                        <div class="box" v-for="item in filteredItems" :title="JSON.stringify(item, null, ' ')">
+                            <article class="media">
+                                <div class="media-content">
+                                    <div class="content">
+                                        <h3><a :href="item.link" target="_blank">{{ item.name }}</a></h3>
+                                        <div>Current Bid: ${{ item.current_bid }}</div>
+                                        <div>Ends At: {{ (new Date(item.end_time)).toLocaleString() }}</div>
+                                        <button class="button is-small" @click="debug(item)">dbg</button>
+                                        <img v-for="img_link in item.img_links" :src="img_link"></img>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <button class="button is-info collapse-contol" @click="toggleCollapsed">
+            Toggle Control
+        </button>
+        <button class="button is-primary back-to-top" @click="scrollToTop">
+            Back to Top
+        </button>
+    </div>
+
+    <script>
+        function stem(item) {
+            const match_list = item.name.split("*", 1)[0].match(/\w+/g)
+            return (match_list ? match_list.join(" ") : "")
+        }
+        function condition(item) {
+            const name_parts = item.name.split("*")
+            return name_parts.length > 2 ? name_parts[1] : "?"
+        }
+        function retail_price(item) {
+            const name_parts = item.name.split("*")
+            return +name_parts.slice(-1)[0].split("$").pop().replace(",", "").replace("..", ".")
+        }
+        const app = Vue.createApp({
+            data() {
+                return {
+                    items: [],
+                    lastFetched: '',
+                    filters: [{ use: true, expr: '' }],
+                    sort_by: '',
+                    limit: 10,
+                    collapsed: false,
+                    is_fetching: false,
+                    cors_api_key: "",
+                };
+            },
+            created() {
+                const cachedItems = localStorage.getItem('items');
+                if (cachedItems) {
+                    this.items = JSON.parse(cachedItems);
+                    this.lastFetched = localStorage.getItem('lastFetched');
+                }
+                const cachedFilters = localStorage.getItem('filters');
+                if (cachedFilters) {
+                    this.filters = JSON.parse(cachedFilters);
+                }
+                const cachedSortBy = localStorage.getItem('sort_by');
+                if (cachedSortBy) {
+                    this.sort_by = cachedSortBy;
+                }
+                const cachedCorsApiKey = localStorage.getItem('cors_api_key');
+                if (cachedCorsApiKey) {
+                    this.cors_api_key = cachedCorsApiKey;
+                }
+            },
+            methods: {
+                setDefault() {
+                    this.filters = [
+                        {
+                            use: true,
+                            expr: "condition(item) == 'New'",
+                        },
+                        {
+                            use: true, expr: "[" + [
+                                "baby", "infant", "toddler", "kid", "breast",
+                                "crib", "play", "school", "toy", "nursery"].map(i => `'${i}'`).join(',') +
+                                '].some(substr => item.name.toLowerCase().includes(substr))'
+                        },
+                        {
+                            use: false,
+                            expr: "item.current_bid >= 10",
+                        },
+                        {
+                            use: false,
+                            expr: "(new Date(item.end_time)) < (new Date(Date.now() + 1*24*60*60*1000))",
+                        },
+                        {
+                            use: false,
+                            expr: "item.name.toLowerCase().includes('box')",
+                        },
+                    ]
+                    this.sort_by = 'retail_price(b) - retail_price(a)'
+                },
+                async fetch_nocors(addr) {
+                    const nocors_addr = `https://proxy.cors.sh/${addr}`
+                    return fetch(nocors_addr, {
+                        headers: {
+                            'x-cors-api-key': this.cors_api_key
+                        }
+                    });
+                },
+                async fetchItems() {
+                    const ITEM_LIMIT = 100000;
+                    const FILTER = 'Current'
+                    const AUCTION_ROOT = 'https://auction.primeauctions.com'
+                    const AUCTION_ADDR = `${AUCTION_ROOT}/Public/GlobalSearch/GetGlobalSearchResults?pageNumber=1&pagesize=${ITEM_LIMIT}&filter=${FILTER}&sortBy=enddate_desc&search=`
+
+                    this.is_fetching = true
+                    const response = await this.fetch_nocors(AUCTION_ADDR);
+                    const result = await response.text();
+
+                    const parser = new DOMParser();
+                    dom = parser.parseFromString(result, 'text/html');
+
+                    const base_elem = dom.createElement('base');
+                    base_elem.setAttribute('href', AUCTION_ROOT);
+                    dom.head.append(base_elem);
+
+                    const fetchedItems = [];
+                    for (const raw_item of dom.getElementsByClassName("form-row")) {
+                        const title_elem = raw_item.getElementsByTagName("h6")[0].firstElementChild;
+                        const name = title_elem.textContent.trim();
+                        const link = title_elem.href;
+
+                        const [start_time_elem, end_time_elem] = raw_item.getElementsByClassName("local-date-time")
+                        const end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
+
+                        const current_bid = raw_item.getElementsByClassName("font-1rem")[0].textContent.split(":").pop();
+
+                        const img_elems = raw_item.parentElement.parentElement.getElementsByTagName("img");
+                        const img_links = []
+                        for (const img_elem of img_elems) {
+                            img_links.push(img_elem.getAttribute("src"))
+                        }
+
+                        fetchedItems.push({
+                            name, link, end_time, current_bid, img_links,
+                        });
+                    }
+
+                    this.items = fetchedItems;
+                    this.lastFetched = new Date().toLocaleString();
+
+                    localStorage.setItem('items', JSON.stringify(this.items));
+                    localStorage.setItem('lastFetched', this.lastFetched);
+                    this.is_fetching = false
+                },
+                debug(item) {
+                    x = item
+                },
+                addFilter() {
+                    this.filters.push({ use: true, expr: '' });
+                },
+                removeFilter(index) {
+                    this.filters.splice(index, 1);
+                },
+                updateFilter(index, event) {
+                    this.filters[index].expr = event.target.value
+                },
+                updateCorsApiKey(event) {
+                    localStorage.setItem('cors_api_key', event.target.value)
+                },
+                toggleCollapsed() {
+                    this.collapsed = !this.collapsed;
+                },
+                scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            },
+            computed: {
+                filteredItems() {
+                    try {
+                        let filteredItems = this.items;
+                        for (const filter of this.filters) {
+                            if (filter.use) {
+                                filteredItems = filteredItems.filter(item => eval(filter.expr));
+                            }
+                        }
+                        if (this.sort_by) {
+                            filteredItems = filteredItems.sort((a, b) => eval(this.sort_by));
+                        }
+
+                        localStorage.setItem('filters', JSON.stringify(this.filters));
+                        localStorage.setItem('sort_by', this.sort_by);
+                        return filteredItems.slice(0, this.limit);
+                    } catch (err) {
+                        error = err
+                    }
+                }
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+
+</html>
