@@ -248,7 +248,7 @@
                 },
                 duckDuckGoSearchLucky(siteQuery, item) {
                     let encodedQuery = encodeURIComponent(stem(item));
-                    return `https://duckduckgo.com/?q=!+${encodedQuery}+(${siteQuery})`;
+                    return `https://duckduckgo.com/?q=\\\\${encodedQuery}+(${siteQuery})`;
                 },
                 debug(item) {
                     x = item
