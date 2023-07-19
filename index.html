@@ -82,6 +82,13 @@
                                         <h3><a :href="item.link" target="_blank">{{ item.name }}</a></h3>
                                         <div>Current Bid: ${{ item.current_bid }}</div>
                                         <div>Ends At: {{ (new Date(item.end_time)).toLocaleString() }}</div>
+                                        <div>
+                                            <a :href="duckDuckGoSearchLuckyAll(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=vQl9BKYANTYq&format=png" width="32"></a>
+                                            <a :href="googleSearch(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=hFJUPuQ-CF0p&format=png" width="32"></a>
+                                            <a :href="duckDuckGoSearchLucky('site:amazon.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=8P8YogTOtnau&format=png" width="32"></a>
+                                            <a :href="duckDuckGoSearchLucky('site:walmart.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=KVmtkP6LnZFD&format=png" width="32"></a>
+                                            <a :href="duckDuckGoSearchLucky('site:target.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=JHA5Q0GTljCS&format=png" width="32"></a>
+                                        </div>
                                         <button class="button is-small" @click="debug(item)">dbg</button>
                                         <img v-for="img_link in item.img_links" :src="img_link"></img>
                                     </div>
@@ -227,6 +234,21 @@
                     localStorage.setItem('items', JSON.stringify(this.items));
                     localStorage.setItem('lastFetched', this.lastFetched);
                     this.is_fetching = false
+                },
+                googleSearch(item) {
+                    const sites = ['amazon.com', 'walmart.com', 'target.com'];
+                    let siteQuery = sites.map(site => `site:${site}`).join('+OR+');
+                    let encodedQuery = encodeURIComponent(stem(item));
+                    return `https://www.google.com/search?q=${encodedQuery}+${siteQuery}`;
+                },
+                duckDuckGoSearchLuckyAll(item) {
+                    const sites = ['amazon.com', 'walmart.com', 'target.com'];
+                    let siteQuery = sites.map(site => `site:${site}`).join('+OR+');
+                    return this.duckDuckGoSearchLucky(siteQuery, item);
+                },
+                duckDuckGoSearchLucky(siteQuery, item) {
+                    let encodedQuery = encodeURIComponent(stem(item));
+                    return `https://duckduckgo.com/?q=!+${encodedQuery}+(${siteQuery})`;
                 },
                 debug(item) {
                     x = item
