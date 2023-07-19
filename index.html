@@ -135,6 +135,8 @@
                 };
             },
             created() {
+                this.setDefault()
+
                 const cachedItems = localStorage.getItem('items');
                 if (cachedItems) {
                     this.items = JSON.parse(cachedItems);
@@ -169,6 +171,10 @@
                         {
                             use: false,
                             expr: "item.current_bid >= 10",
+                        },
+                        {
+                            use: true,
+                            expr: "(new Date(item.end_time)) > Date.now()",
                         },
                         {
                             use: false,
@@ -214,6 +220,8 @@
 
                         const [start_time_elem, end_time_elem] = raw_item.getElementsByClassName("local-date-time")
                         const end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
+                        // Convert from "America/Chicago" to "America/Los_Angeles"
+                        end_time.setHours(end_time.getHours() - 2)
 
                         const current_bid = raw_item.getElementsByClassName("font-1rem")[0].textContent.split(":").pop();
 
