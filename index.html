@@ -258,7 +258,7 @@
                     return this.duckDuckGoSearchLucky(this.searchSitesLimitQuery(), item);
                 },
                 duckDuckGoSearchLucky(siteQuery, item) {
-                    return `https://duckduckgo.com/?q=\\\\${this.itemQuery(item)}+${siteQuery}`;
+                    return `https://duckduckgo.com/?q=\\${this.itemQuery(item)}+${siteQuery}`;
                 },
                 debug(item) {
                     x = item
