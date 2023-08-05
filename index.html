@@ -243,20 +243,22 @@
                     localStorage.setItem('lastFetched', this.lastFetched);
                     this.is_fetching = false
                 },
-                googleSearch(item) {
+                itemQuery(item) {
+                    return encodeURIComponent(stem(item));
+                },
+                searchSitesLimitQuery() {
                     const sites = ['amazon.com', 'walmart.com', 'target.com'];
                     let siteQuery = sites.map(site => `site:${site}`).join('+OR+');
-                    let encodedQuery = encodeURIComponent(stem(item));
-                    return `https://www.google.com/search?q=${encodedQuery}+${siteQuery}`;
+                    return `(${siteQuery})`
+                },
+                googleSearch(item) {
+                    return `https://www.google.com/search?q=${this.itemQuery(item)}+${this.searchSitesLimitQuery()}`;
                 },
                 duckDuckGoSearchLuckyAll(item) {
-                    const sites = ['amazon.com', 'walmart.com', 'target.com'];
-                    let siteQuery = sites.map(site => `site:${site}`).join('+OR+');
-                    return this.duckDuckGoSearchLucky(siteQuery, item);
+                    return this.duckDuckGoSearchLucky(this.searchSitesLimitQuery(), item);
                 },
                 duckDuckGoSearchLucky(siteQuery, item) {
-                    let encodedQuery = encodeURIComponent(stem(item));
-                    return `https://duckduckgo.com/?q=\\\\${encodedQuery}+(${siteQuery})`;
+                    return `https://duckduckgo.com/?q=\\\\${this.itemQuery(item)}+${siteQuery}`;
                 },
                 debug(item) {
                     x = item
