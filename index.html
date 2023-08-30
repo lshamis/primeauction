@@ -33,13 +33,6 @@
                         <button class="button" :class="{ 'is-primary': !is_fetching, 'is-loading': is_fetching }"
                             @click="fetchItems">Fetch</button>
                         <p>Last fetched: {{ lastFetched }}</p>
-                        <input class="input" type="text" v-model="cors_api_key" @input="updateCorsApiKey">
-                        <div>
-                            <a href="https://proxy.cors.sh">proxy.cors.sh</a>
-                        </div>
-                        <div>
-                            <a href="https://10minutemail.com">10minutemail.com</a>
-                        </div>
                         <hr>
                         <h3 class="subtitle">Filters
                             <button class="button is-warning is-small" @click="setDefault">Reset</button>
@@ -75,7 +68,7 @@
                     </div>
 
                     <div class="column" :class="{ 'is-8': !collapsed }">
-                        <div class="box" v-for="item in filteredItems" :title="JSON.stringify(item, null, ' ')">
+                        <div class="box" v-for="item in filteredItems">
                             <article class="media">
                                 <div class="media-content">
                                     <div class="content">
@@ -131,7 +124,6 @@
                     limit: 10,
                     collapsed: false,
                     is_fetching: false,
-                    cors_api_key: "",
                 };
             },
             created() {
@@ -149,10 +141,6 @@
                 const cachedSortBy = localStorage.getItem('sort_by');
                 if (cachedSortBy) {
                     this.sort_by = cachedSortBy;
-                }
-                const cachedCorsApiKey = localStorage.getItem('cors_api_key');
-                if (cachedCorsApiKey) {
-                    this.cors_api_key = cachedCorsApiKey;
                 }
             },
             methods: {
@@ -187,23 +175,23 @@
                     ]
                     this.sort_by = 'retail_price(b) - retail_price(a)'
                 },
-                async fetch_nocors(addr) {
-                    const nocors_addr = `https://proxy.cors.sh/${addr}`
-                    return fetch(nocors_addr, {
-                        headers: {
-                            'x-cors-api-key': this.cors_api_key
-                        }
-                    });
-                },
                 async fetchItems() {
                     const ITEM_LIMIT = 100000;
                     const FILTER = 'Current'
                     const AUCTION_ROOT = 'https://auction.primeauctions.com'
                     const AUCTION_ADDR = `${AUCTION_ROOT}/Public/GlobalSearch/GetGlobalSearchResults?pageNumber=1&pagesize=${ITEM_LIMIT}&filter=${FILTER}&sortBy=enddate_desc&search=`
+                    const NOCORS_ADDR = 'https://splendorous-platypus-386314.netlify.app/.netlify/functions/cors-bypass'
 
                     this.is_fetching = true
-                    const response = await this.fetch_nocors(AUCTION_ADDR);
-                    const result = await response.text();
+                    const response = await fetch(NOCORS_ADDR, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            endpoint: AUCTION_ADDR,
+                            compress: true,
+                        }),
+                    });
+                    const stream = response.body.pipeThrough(new DecompressionStream('gzip'))
+                    const result = await new Response(stream).text()
 
                     const parser = new DOMParser();
                     dom = parser.parseFromString(result, 'text/html');
@@ -271,9 +259,6 @@
                 },
                 updateFilter(index, event) {
                     this.filters[index].expr = event.target.value
-                },
-                updateCorsApiKey(event) {
-                    localStorage.setItem('cors_api_key', event.target.value)
                 },
                 toggleCollapsed() {
                     this.collapsed = !this.collapsed;
