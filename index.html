@@ -7,6 +7,7 @@
     <title>Prime Auction</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
     <script src="https://unpkg.com/vue@3.2.6/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/pieroxy/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <style>
         .collapse-contol {
             position: fixed;
@@ -131,7 +132,7 @@
 
                 const cachedItems = localStorage.getItem('items');
                 if (cachedItems) {
-                    this.items = JSON.parse(cachedItems);
+                    this.items = JSON.parse(LZString.decompress(cachedItems));
                     this.lastFetched = localStorage.getItem('lastFetched');
                 }
                 const cachedFilters = localStorage.getItem('filters');
@@ -228,7 +229,7 @@
                     this.items = fetchedItems;
                     this.lastFetched = new Date().toLocaleString();
 
-                    localStorage.setItem('items', JSON.stringify(this.items));
+                    localStorage.setItem('items', LZString.compress(JSON.stringify(this.items)));
                     localStorage.setItem('lastFetched', this.lastFetched);
                     this.is_fetching = false
                 },
