@@ -208,7 +208,8 @@
                         const name = title_elem.textContent.trim();
                         const link = title_elem.href;
 
-                        const [start_time_elem, end_time_elem] = raw_item.getElementsByClassName("local-date-time")
+                        const time_elems = raw_item.getElementsByClassName("local-date-time")
+                        const end_time_elem = time_elems[time_elems.length - 1];
                         const end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
                         // Convert from "America/Chicago" to "America/Los_Angeles"
                         end_time.setHours(end_time.getHours() - 2)
