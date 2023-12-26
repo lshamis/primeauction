@@ -192,8 +192,9 @@
                             compress: true,
                         }),
                     });
-                    const stream = response.body.pipeThrough(new DecompressionStream('gzip'))
-                    const result = await new Response(stream).text()
+                    // const stream = response.body.pipeThrough(new DecompressionStream('gzip'))
+                    // const result = await new Response(stream).text()
+                    const result = await new Response(response.body).text()
 
                     const parser = new DOMParser();
                     dom = parser.parseFromString(result, 'text/html');
@@ -204,15 +205,25 @@
 
                     const fetchedItems = [];
                     for (const raw_item of dom.getElementsByClassName("form-row")) {
-                        const title_elem = raw_item.getElementsByTagName("h6")[0].firstElementChild;
+                        const container = raw_item.getElementsByTagName("h6")
+                        if (container.length < 1) {
+                            console.log(raw_item)
+                            continue
+                        }
+                        const title_elem = container[0].firstElementChild
                         const name = title_elem.textContent.trim();
                         const link = title_elem.href;
 
                         const time_elems = raw_item.getElementsByClassName("local-date-time")
-                        const end_time_elem = time_elems[time_elems.length - 1];
-                        const end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
-                        // Convert from "America/Chicago" to "America/Los_Angeles"
-                        end_time.setHours(end_time.getHours() - 2)
+                        let end_time = undefined
+                        if (time_elems.length > 0) {
+                            const end_time_elem = time_elems[time_elems.length - 1];
+                            end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
+                            // Convert from "America/Chicago" to "America/Los_Angeles"
+                            end_time.setHours(end_time.getHours() - 2)
+                        } else {
+                            console.log('no local-date-time', raw_item)
+                        }
 
                         const current_bid = raw_item.getElementsByClassName("font-1rem")[0].textContent.split(":").pop();
 
