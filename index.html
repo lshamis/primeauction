@@ -5,177 +5,177 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prime Auction</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
-    <script src="https://unpkg.com/vue@3.2.6/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/pieroxy/lz-string@1.5.0/libs/lz-string.min.js"></script>
-    <style>
-        .collapse-contol {
-            position: fixed;
-            bottom: 5rem;
-            right: 2rem;
-            z-index: 999;
-        }
-
-        .back-to-top {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 999;
-        }
-    </style>
 </head>
 
 <body>
-    <div id="app" class="container">
-        <section class="section">
-            <div class="container">
-                <div class="columns">
-                    <div class="column is-4" v-show="!collapsed">
-                        <button class="button" :class="{ 'is-primary': !is_fetching, 'is-loading': is_fetching }"
-                            @click="fetchItems">Fetch</button>
-                        <p>Last fetched: {{ lastFetched }}</p>
-                        <hr>
-                        <h3 class="subtitle">Filters
-                            <button class="button is-warning is-small" @click="setDefault">Reset</button>
-                        </h3>
-                        <div class="field" v-for="(filter, index) in filters" :key="index">
-                            <div class="field has-addons">
+    <div id="app">
+        <div class="columns">
+            <div class="column is-narrow">
+                <nav class="panel" style="position: sticky; top: 0;">
+                    <p v-if="collapsed" class="panel-heading" @click="collapsed=false">
+                        <span class="icon">
+                            <i class="fas fa-right-to-bracket"></i>
+                        </span>
+                    </p>
+                    <p v-if="!collapsed" class="panel-heading" @click="collapsed=true">
+                        <span style="margin-right: 20px;">Prime Auction</span>
+                        <span class="icon is-pulled-right">
+                            <i class="fas fa-right-to-bracket fa-flip-horizontal"></i>
+                        </span>
+                    </p>
+                    <div v-if="collapsed" class="panel-block" style="height: 100vh;"></div>
+                    <div v-if="!collapsed" class="is-flex is-flex-direction-column is-pulled-left" style="height: 100vh;">
+                        <div class="panel-block">
+                            <button class="button" :class="{ 'is-primary': !is_fetching, 'is-loading': is_fetching }" :title="'Last fetched:\n' + lastFetched" @click="fetchItems">Fetch</button>
+                        </div>
+                        <div class="panel-block">
+                            <div class="field">
                                 <div class="control">
-                                    <div>
-                                        <label class="checkbox">
-                                            <input type="checkbox" v-model="filter.use">
-                                            Use
-                                        </label>
-                                    </div>
-                                    <div>
-                                        <button class="button is-danger" @click="removeFilter(index)">Remove</button>
-                                    </div>
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="only_new">
+                                        Only New Items
+                                    </label>
                                 </div>
                                 <div class="control">
-                                    <textarea class="textarea" v-model="filter.expr"
-                                        @input="updateFilter(index, $event)"></textarea>
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="hide_closed">
+                                        Hide Closed
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" v-model="close_today">
+                                        Closes Today
+                                    </label>
                                 </div>
                             </div>
                         </div>
-                        <button class="button is-success is-small" @click="addFilter">
-                            Add
-                        </button>
-                        <hr>
-                        <h3 class="subtitle">Sort By</h3>
-                        <input class="input" v-model="sort_by">
-                        <hr>
-                        <h3 class="subtitle">Limit</h3>
-                        <input class="input" v-model="limit">
-                    </div>
-
-                    <div class="column" :class="{ 'is-8': !collapsed }">
-                        <div class="box" v-for="item in filteredItems">
-                            <article class="media">
-                                <div class="media-content">
-                                    <div class="content">
-                                        <h3><a :href="item.link" target="_blank">{{ item.name }}</a></h3>
-                                        <div>Current Bid: ${{ item.current_bid }}</div>
-                                        <div>Ends At: {{ (new Date(item.end_time)).toLocaleString() }}</div>
-                                        <div>
-                                            <a :href="duckDuckGoSearchLuckyAll(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=vQl9BKYANTYq&format=png" width="32"></a>
-                                            <a :href="googleSearch(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=hFJUPuQ-CF0p&format=png" width="32"></a>
-                                            <a :href="duckDuckGoSearchLucky('site:amazon.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=8P8YogTOtnau&format=png" width="32"></a>
-                                            <a :href="duckDuckGoSearchLucky('site:walmart.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=KVmtkP6LnZFD&format=png" width="32"></a>
-                                            <a :href="duckDuckGoSearchLucky('site:target.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=JHA5Q0GTljCS&format=png" width="32"></a>
-                                        </div>
-                                        <button class="button is-small" @click="debug(item)">dbg</button>
-                                        <img v-for="img_link in item.img_links" :src="img_link"></img>
-                                    </div>
-                                </div>
-                            </article>
+                        <div class="panel-block">
+                            <div class="select is-fullwidth">
+                                <select v-model="selected_filter" @change="loadFilter">
+                                    <option v-for="(filter, name) in defined_filters" :key="name" :value="name">
+                                        {{ name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="panel-block">
+                            <div class="field is-grouped">
+                                <p class="control">
+                                    <button class="button is-primary" @click="addFilter">Add</button>
+                                </p>
+                                <p class="control">
+                                    <button class="button is-danger" @click="removeFilter">Remove</button>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="panel-block">
+                            <textarea class="textarea" v-model="current_filter" rows="10"></textarea>
                         </div>
                     </div>
-                </div>
+                </nav>
             </div>
-        </section>
+            <div class="column">
+                <div v-for="(row, rowIndex) in rows" :key="rowIndex">
+                    <section class="section">
+                        <div class="box">
+                            <div class="columns">
+                                <div v-for="item in row" :key="item.id" class="column is-one-quarter">
+                                    <h3><a :href="item.link" target="_blank">{{ item.name }}</a></h3>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div v-for="item in row" :key="item.id" class="column is-one-quarter">
+                                    Current Bid: ${{ item.current_bid }}
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div v-for="item in row" :key="item.id" class="column is-one-quarter">
+                                    Ends At: {{ (new Date(item.end_time)).toLocaleString() }}
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div v-for="item in row" :key="item.id" class="column is-one-quarter">
+                                    <div>
+                                        <a :href="duckDuckGoSearchLuckyAll(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=vQl9BKYANTYq&format=png" width="32"></a>
+                                        <a :href="googleSearch(item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=hFJUPuQ-CF0p&format=png" width="32"></a>
+                                        <a :href="duckDuckGoSearchLucky('site:amazon.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=8P8YogTOtnau&format=png" width="32"></a>
+                                        <a :href="duckDuckGoSearchLucky('site:walmart.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=KVmtkP6LnZFD&format=png" width="32"></a>
+                                        <a :href="duckDuckGoSearchLucky('site:target.com', item)" target="_blank"><img src="https://img.icons8.com/?size=1x&id=JHA5Q0GTljCS&format=png" width="32"></a>
+                                        <a @click="debug(item)"><i class="fas fa-bug"></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div v-for="item in row" :key="item.id" class="column is-one-quarter">
+                                    <img v-for="img_link in item.img_links" :src="img_link"></img>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
 
-        <button class="button is-info collapse-contol" @click="toggleCollapsed">
-            Toggle Control
-        </button>
-        <button class="button is-primary back-to-top" @click="scrollToTop">
-            Back to Top
-        </button>
+                <footer class="footer" style="position: sticky; bottom: 0;">
+                    <nav class="pagination is-centered" >
+                        <a class="pagination-previous" @click.prevent="prevPage">Prev</a>
+                        <a class="pagination-next" @click.prevent="nextPage">Next</a>
+                        <ul class="pagination-list">
+                            <li v-for="page in paginatedPages" :key="page">
+                                <a class="pagination-link" @click.prevent="gotoPage(page)"
+                                    :class="{'is-current': page === current_page}"
+                                    v-if="page !== '...'">
+                                    {{ page }}
+                                </a>
+                                <span class="pagination-ellipsis" v-else>&hellip;</span>
+                            </li>
+                        </ul>
+                    </nav>
+                </footer>
+            </div>
+        </div>
     </div>
 
     <script>
-        function stem(item) {
-            const match_list = item.name.split("*", 1)[0].match(/\w+/g)
-            return (match_list ? match_list.join(" ") : "")
-        }
-        function condition(item) {
-            const name_parts = item.name.split("*")
-            return name_parts.length > 2 ? name_parts[1] : "?"
-        }
-        function retail_price(item) {
-            const name_parts = item.name.split("*")
-            return +name_parts.slice(-1)[0].split("$").pop().replace(",", "").replace("..", ".")
-        }
         const app = Vue.createApp({
             data() {
                 return {
                     items: [],
                     lastFetched: '',
-                    filters: [{ use: true, expr: '' }],
-                    sort_by: '',
-                    limit: 10,
+                    only_new: false,
+                    hide_closed: false,
+                    close_today: false,
+                    defined_filters: {
+                        'All': '',
+                        'Baby': 'baby\ninfant\ntoddler\nkid\nbreast\ncrib\nplay\nschool\ntoy\nnursery\n',
+                    },
+                    selected_filter: 'All',
+                    current_filter: '',
                     collapsed: false,
+                    fetch_interval_id: null,
                     is_fetching: false,
+                    current_page: 1,
+                    items_per_page: 12,
                 };
             },
             created() {
-                this.setDefault()
-
                 const cachedItems = localStorage.getItem('items');
+                const cachedFilters = localStorage.getItem('defined_filters');
+
                 if (cachedItems) {
                     this.items = JSON.parse(LZString.decompress(cachedItems));
                     this.lastFetched = localStorage.getItem('lastFetched');
                 }
-                const cachedFilters = localStorage.getItem('filters');
                 if (cachedFilters) {
-                    this.filters = JSON.parse(cachedFilters);
+                    this.defined_filters = JSON.parse(LZString.decompress(cachedFilters));
                 }
-                const cachedSortBy = localStorage.getItem('sort_by');
-                if (cachedSortBy) {
-                    this.sort_by = cachedSortBy;
-                }
+
+                this.startFetchInterval();
             },
             methods: {
-                setDefault() {
-                    this.filters = [
-                        {
-                            use: true,
-                            expr: "condition(item) == 'New'",
-                        },
-                        {
-                            use: true, expr: "[" + [
-                                "baby", "infant", "toddler", "kid", "breast",
-                                "crib", "play", "school", "toy", "nursery"].map(i => `'${i}'`).join(',') +
-                                '].some(substr => item.name.toLowerCase().includes(substr))'
-                        },
-                        {
-                            use: false,
-                            expr: "item.current_bid >= 10",
-                        },
-                        {
-                            use: true,
-                            expr: "(new Date(item.end_time)) > Date.now()",
-                        },
-                        {
-                            use: false,
-                            expr: "(new Date(item.end_time)) < (new Date(Date.now() + 1*24*60*60*1000))",
-                        },
-                        {
-                            use: false,
-                            expr: "item.name.toLowerCase().includes('box')",
-                        },
-                    ]
-                    this.sort_by = 'retail_price(b) - retail_price(a)'
-                },
                 async fetchItems() {
                     const ITEM_LIMIT = 100000;
                     const FILTER = 'Current'
@@ -189,7 +189,7 @@
                         body: JSON.stringify({
                             endpoint: AUCTION_ADDR,
                             headers: {'X-Requested-With': 'XMLHttpRequest'},
-                            compress: true,
+                            // compress: true,
                         }),
                     });
                     // const stream = response.body.pipeThrough(new DecompressionStream('gzip'))
@@ -205,27 +205,26 @@
 
                     const fetchedItems = [];
                     for (const raw_item of dom.getElementsByClassName("form-row")) {
-                        const container = raw_item.getElementsByTagName("h6")
+                        const container = raw_item.getElementsByTagName("h6");
                         if (container.length < 1) {
-                            console.log(raw_item)
-                            continue
+                            console.log("Parse error: empty container", raw_item);
+                            continue;
                         }
-                        const title_elem = container[0].firstElementChild
+                        const title_elem = container[0].firstElementChild;
                         const name = title_elem.textContent.trim();
                         const link = title_elem.href;
 
-                        const time_elems = raw_item.getElementsByClassName("local-date-time")
-                        let end_time = undefined
-                        if (time_elems.length > 0) {
-                            const end_time_elem = time_elems[time_elems.length - 1];
-                            end_time = new Date(end_time_elem.getAttribute("data-auc-date"))
-                            // Convert from "America/Chicago" to "America/Los_Angeles"
-                            end_time.setHours(end_time.getHours() - 2)
-                        } else {
-                            console.log('no local-date-time', raw_item)
+                        const time_elems = raw_item.getElementsByClassName("local-date-time");
+                        if (time_elems.length < 1) {
+                            console.log("Parse error: no end time", raw_item);
+                            continue;
                         }
+                        const end_time_elem = time_elems[time_elems.length - 1];
+                        const end_time = new Date(end_time_elem.getAttribute("data-auc-date"));
+                        // Convert from "America/Chicago" to "America/Los_Angeles"
+                        end_time.setHours(end_time.getHours() - 2)
 
-                        const current_bid = raw_item.getElementsByClassName("font-1rem")[0].textContent.split(":").pop();
+                        const current_bid = +raw_item.getElementsByClassName("font-1rem")[0].textContent.split(":").pop();
 
                         const img_elems = raw_item.parentElement.parentElement.getElementsByTagName("img");
                         const img_links = []
@@ -233,8 +232,16 @@
                             img_links.push(img_elem.getAttribute("src"))
                         }
 
+                        const name_parts = name.split("*");
+
+                        const stem_match_list = name_parts[0].match(/\w+/g);
+                        const stem = (stem_match_list ? stem_match_list.join(" ") : "");
+
+                        const condition = name_parts.length > 2 ? name_parts[1] : "?";
+                        const retail_price = +name_parts.slice(-1)[0].split("$").pop().replace(",", "").replace("..", ".");
+
                         fetchedItems.push({
-                            name, link, end_time, current_bid, img_links,
+                            name, stem, link, condition, end_time, img_links, retail_price, current_bid,
                         });
                     }
 
@@ -244,9 +251,17 @@
                     localStorage.setItem('items', LZString.compress(JSON.stringify(this.items)));
                     localStorage.setItem('lastFetched', this.lastFetched);
                     this.is_fetching = false
+
+                    this.startFetchInterval();
+                },
+                startFetchInterval() {
+                    if (this.fetch_interval_id) {
+                        clearInterval(this.fetch_interval_id);
+                    }
+                    this.fetch_interval_id = setInterval(this.fetchItems, 10 * 60 * 1000);
                 },
                 itemQuery(item) {
-                    return encodeURIComponent(stem(item));
+                    return encodeURIComponent(item.stem);
                 },
                 searchSitesLimitQuery() {
                     const sites = ['amazon.com', 'walmart.com', 'target.com'];
@@ -265,42 +280,148 @@
                 debug(item) {
                     x = item
                 },
+                loadFilter() {
+                    this.current_filter = this.defined_filters[this.selected_filter];
+                },
                 addFilter() {
-                    this.filters.push({ use: true, expr: '' });
+                    const name = prompt('Enter new filter name:');
+                    if (!name || this.defined_filters[name]) {
+                        return;
+                    }
+                    this.defined_filters[name] = '';
+                    this.selected_filter = name;
+                    this.current_filter = '';
                 },
-                removeFilter(index) {
-                    this.filters.splice(index, 1);
+                removeFilter() {
+                    if (this.selected_filter == 'All') {
+                        return;
+                    }
+                    delete this.defined_filters[this.selected_filter];
+                    this.selected_filter = 'All';
+                    this.current_filter = '';
                 },
-                updateFilter(index, event) {
-                    this.filters[index].expr = event.target.value
-                },
-                toggleCollapsed() {
-                    this.collapsed = !this.collapsed;
-                },
-                scrollToTop() {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            },
-            computed: {
                 filteredItems() {
                     try {
                         let filteredItems = this.items;
-                        for (const filter of this.filters) {
-                            if (filter.use) {
-                                filteredItems = filteredItems.filter(item => eval(filter.expr));
-                            }
+                        if (this.only_new) {
+                            filteredItems = filteredItems.filter(item => item.condition == 'New');
                         }
-                        if (this.sort_by) {
-                            filteredItems = filteredItems.sort((a, b) => eval(this.sort_by));
+                        if (this.hide_closed) {
+                            filteredItems = filteredItems.filter(item => (new Date(item.end_time)) > Date.now());
+                        }
+                        if (this.close_today) {
+                            filteredItems = filteredItems.filter(item => (new Date(item.end_time)).setHours(0, 0, 0, 0) == (new Date()).setHours(0, 0, 0, 0));
                         }
 
-                        localStorage.setItem('filters', JSON.stringify(this.filters));
-                        localStorage.setItem('sort_by', this.sort_by);
-                        return filteredItems.slice(0, this.limit);
+                        if (this.current_filter) {
+                            const filter_parts = this.current_filter
+                                .split('\n')
+                                .map(part => part.toLowerCase().trim())
+                                .filter(Boolean);
+
+                            filteredItems = filteredItems.filter(item =>
+                                filter_parts.some(part => item.name.toLowerCase().includes(part))
+                            );
+                        }
+                        filteredItems.sort((a, b) => {
+                            if (a.retail_price == null && b.retail_price == null) return 0;
+                            if (a.retail_price == null) return 1;
+                            if (b.retail_price == null) return -1;
+
+                            return b.retail_price - a.retail_price;
+                        });
+
+                        return filteredItems;
                     } catch (err) {
                         error = err
                     }
+                },
+                prevPage() {
+                    if (this.current_page > 1) {
+                        this.current_page--;
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }
+                },
+                nextPage() {
+                    if (this.current_page < this.totalPages) {
+                        this.current_page++;
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }
+                },
+                gotoPage(num) {
+                    if (this.current_page != num) {
+                        this.current_page = num;
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }
+                },
+            },
+            watch: {
+                current_filter(new_val) {
+                    if (this.selected_filter) {
+                        this.defined_filters[this.selected_filter] = new_val;
+                        localStorage.setItem('defined_filters', LZString.compress(JSON.stringify(this.defined_filters)));
+                    }
                 }
+            },
+            computed: {
+                totalPages() {
+                    return Math.ceil(this.filteredItems().length / this.items_per_page);
+                },
+                pageNumbers() {
+                    const pages = [];
+                    for (let i = 1; i <= this.totalPages; i++) {
+                        pages.push(i);
+                    }
+                    return pages;
+                },
+                paginatedPages() {
+                    const range = (start, end) => Array.from({ length: (end - start) + 1 }, (v, k) => k + start);
+
+                    let pages = [];
+                    const totalPages = this.totalPages;
+                    const current_page = this.current_page;
+                    const wingSpan = 2;
+
+                    if (totalPages <= 9) {
+                        pages = range(1, totalPages);
+                    } else {
+                        pages.push(1);
+
+                        let lowerLimit = Math.max(2, current_page - wingSpan);
+                        let upperLimit = Math.min(totalPages - 1, current_page + wingSpan);
+
+                        if (current_page - 1 <= 3) {
+                            upperLimit = 5;
+                        }
+                        if (totalPages - current_page <= 3) {
+                            lowerLimit = totalPages - 4;
+                        }
+
+                        if (lowerLimit > 2) {
+                            pages.push('...');
+                        }
+                        for (let i = lowerLimit; i <= upperLimit; i++) {
+                            pages.push(i);
+                        }
+                        if (upperLimit < totalPages - 1) {
+                            pages.push('...');
+                        }
+
+                        pages.push(totalPages);
+                    }
+                    return pages;
+                },
+                rows() {
+                    const start_index = (this.current_page - 1) * this.items_per_page;
+                    const end_index = start_index + this.items_per_page;
+                    const filtered_items = this.filteredItems().slice(start_index, end_index);
+
+                    const rows = [];
+                    for (let i = 0; i < this.items_per_page; i += 4) {
+                        rows.push(filtered_items.slice(i, i + 4));
+                    }
+                    return rows;
+                },
             }
         });
 
