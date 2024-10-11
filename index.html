@@ -189,7 +189,7 @@
                         body: JSON.stringify({
                             endpoint: AUCTION_ADDR,
                             headers: {'X-Requested-With': 'XMLHttpRequest'},
-                            // compress: true,
+                            compress: true,
                         }),
                     });
                     // const stream = response.body.pipeThrough(new DecompressionStream('gzip'))
